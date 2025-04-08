@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Launch Site Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <style>
+        :root {
+            --primary: #0D1B2A;
+            --secondary: #1B263B;
+            --accent: #415A77;
+            --text: #E0E1DD;
+            --highlight: #778DA9;
+            --success: #4CAF50;
+            --warning: #FFC107;
+            --danger: #F44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--primary);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--secondary);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: white;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin: 20px 0;
+            color: var(--highlight);
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            margin: 15px 0;
+            color: var(--highlight);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--highlight);
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -15px;
+        }
+
+        .col {
+            flex: 1;
+            padding: 15px;
+            min-width: 300px;
+        }
+
+        .card {
+            background-color: var(--secondary);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: 100%;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .card-icon {
+            background-color: var(--accent);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .intro-text, .conclusion-text {
+            margin-bottom: 20px;
+            text-align: justify;
+            line-height: 1.8;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--accent) 100%);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--highlight);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        th {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        tr:hover {
+            background-color: rgba(65, 90, 119, 0.1);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .tag-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .tag-warning {
+            background-color: var(--warning);
+            color: black;
+        }
+
+        .tag-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .key-finding {
+            background-color: rgba(65, 90, 119, 0.2);
+            border-left: 4px solid var(--highlight);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .success-rate {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            flex-grow: 1;
+            height: 20px;
+            background-color: rgba(65, 90, 119, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-right: 15px;
+        }
+
+        .progress {
+            height: 100%;
+            border-radius: 10px;
+        }
+
+        .high-success {
+            background-color: var(--success);
+        }
+
+        .medium-success {
+            background-color: var(--warning);
+        }
+
+        .low-success {
+            background-color: var(--danger);
+        }
+
+        .rate-label {
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .map-legend {
+            background-color: rgba(27, 38, 59, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .map-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .map-control-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .map-control-btn:hover {
+            background-color: var(--highlight);
+        }
+
+        .map-control-btn.active {
+            background-color: var(--highlight);
+            font-weight: bold;
+        }
+
+        .radar-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .radar-legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+
+        .radar-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+        }
+
+        .info-box {
+            background-color: rgba(65, 90, 119, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            background-color: var(--secondary);
+            border-radius: 10px;
+        }
+
+        .author {
+            font-style: italic;
+            color: var(--highlight);
+        }
+
+        .tabs {
+            display: flex;
+            margin: 20px 0 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-right: 10px;
+        }
+
+        .tab.active {
+            color: white;
+            border-bottom: 3px solid white;
+        }
+
+        .tab:hover:not(.active) {
+            color: white;
+            border-bottom: 3px solid rgba(255,255,255,0.4);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .col {
+                flex: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SpaceX Launch Site Analysis</h1>
+            <p class="subtitle">Geographical and Operational Factors in Launch Success</p>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="showSection('overview')"><i class="fas fa-home"></i> Overview</div>
+                <div class="tab" onclick="showSection('sites')"><i class="fas fa-map-marker-alt"></i> Launch Sites</div>
+                <div class="tab" onclick="showSection('proximity')"><i class="fas fa-ruler-combined"></i> Proximity Analysis</div>
+                <div class="tab" onclick="showSection('findings')"><i class="fas fa-lightbulb"></i> Key Findings</div>
+            </div>
+        </header>
+
+        <!-- Overview Section -->
+        <div id="overview" class="section active">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Executive Summary</h2>
+                    <div class="card-icon">
+                        <i class="fas fa-rocket" style="color: white;"></i>
+                    </div>
+                </div>
+                <p class="intro-text">
+                    This dashboard presents a comprehensive analysis of SpaceX launch sites, examining the relationship between geographical factors and launch success rates. Using interactive mapping techniques, we've analyzed the positioning of launch sites relative to coastlines, population centers, and transportation infrastructure to identify patterns that may contribute to operational success. Our findings suggest that strategic site selection plays a significant role in SpaceX's overall mission effectiveness, beyond just the technological capabilities of their rockets.
+                </p>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Launch Sites</div>
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">Analyzed in this study</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Launches</div>
+                        <div class="stat-value">56</div>
+                        <div class="stat-label">From all sites combined</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="stat-card">
+                        <div class="stat-label">Overall Success Rate</div>
+                        <div class="stat-value">76.8%</div>
+                        <div class="stat-label">Across all launches</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Launch Sites Map</h3>
+                    <div class="card-icon">
+                        <i class="fas fa-map-marked-alt" style="color: white;"></i>
+                    </div>
+                </div>
+                <div class="map-container" id="overviewMap"></div>
+                <div class="note info-box">
+                    This map shows all SpaceX launch sites with color coding based on their success rates. You can click on any marker to see more details about the launch site.
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Success Rate by Launch Site</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-percentage" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="successRateChart"></canvas>
+                        </div>
+                        <div class="info-box">
+                            KSC LC-39A has the highest success rate at 76.9%, followed by VAFB SLC-4E at 40%, CCAFS LC-40 at 26.9%, and CCAFS SLC-40 at 42.9%.
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Launch Volume by Site</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-chart-bar" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="launchVolumeChart"></canvas>
+                        </div>
+                        <div class="info-box">
+                            CCAFS LC-40 has the highest number of launches (26), followed by KSC LC-39A (13), VAFB SLC-4E (10), and CCAFS SLC-40 (7).
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Launch Sites Section -->
+        <div id="sites" class="section">
+            <h2>Launch Site Geographic Distribution</h2>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Interactive Map of Launch Sites</h3>
+                    <div class="card-icon">
+                        <i class="fas fa-map-marked-alt" style="color: white;"></i>
+                    </div>
+                </div>
+                <div class="map-controls">
+                    <button id="basicMapBtn" class="map-control-btn active" onclick="changeMapMode('basic')">Basic Map</button>
+                    <button id="successMapBtn" class="map-control-btn" onclick="changeMapMode('success')">Success Rates</button>
+                    <button id="clusterMapBtn" class="map-control-btn" onclick="changeMapMode('cluster')">Launch Clusters</button>
+                </div>
+                <div class="map-container" id="interactiveMap"></div>
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #4CAF50;"></div>
+                        <span>High Success Rate (>70%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #FFC107;"></div>
+                        <span>Medium Success Rate (40-70%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #F44336;"></div>
+                        <span>Lower Success Rate (<40%)</span>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <p><strong>Map Navigation:</strong> Use the buttons above to switch between different map views. Click on any marker to see detailed information about that launch site. Zoom in/out using the +/- controls or your mouse wheel.</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Launch Distribution Heat Map</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-fire" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="map-container" id="heatMap"></div>
+                        <div class="info-box">This heat map shows the concentration of SpaceX launches across different geographical locations, highlighting areas of highest launch activity.</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Success vs. Failure Map</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-layer-group" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="map-container" id="successFailureMap"></div>
+                        <div class="info-box">This map shows successful launches (green) vs failed launches (red) by location.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Site Success Rates</h3>
+                    <div class="card-icon">
+                        <i class="fas fa-percentage" style="color: white;"></i>
+                    </div>
+                </div>
+                
+                <div id="successRatesContainer">
+                    <div class="success-rate">
+                        <div>KSC LC-39A</div>
+                        <div class="progress-bar">
+                            <div class="progress high-success" style="width: 76.9%"></div>
+                        </div>
+                        <div class="rate-label">76.9%</div>
+                    </div>
+                    
+                    <div class="success-rate">
+                        <div>VAFB SLC-4E</div>
+                        <div class="progress-bar">
+                            <div class="progress medium-success" style="width: 40%"></div>
+                        </div>
+                        <div class="rate-label">40%</div>
+                    </div>
+                    
+                    <div class="success-rate">
+                        <div>CCAFS LC-40</div>
+                        <div class="progress-bar">
+                            <div class="progress low-success" style="width: 26.9%"></div>
+                        </div>
+                        <div class="rate-label">26.9%</div>
+                    </div>
+                    
+                    <div class="success-rate">
+                        <div>CCAFS SLC-40</div>
+                        <div class="progress-bar">
+                            <div class="progress medium-success" style="width: 42.9%"></div>
+                        </div>
+                        <div class="rate-label">42.9%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proximity Analysis Section -->
+        <div id="proximity" class="section">
+            <h2>Proximity Analysis</h2>
+
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Site Proximity Factors</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-ruler-combined" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Launch Site</th>
+                                        <th>Distance to Coastline (km)</th>
+                                        <th>Nearest City</th>
+                                        <th>Distance to City (km)</th>
+                                        <th>Distance to Highway (km)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>CCAFS LC-40</td>
+                                        <td>1.05</td>
+                                        <td>Cocoa Beach</td>
+                                        <td>19.34</td>
+                                        <td>1.29</td>
+                                    </tr>
+                                    <tr>
+                                        <td>CCAFS SLC-40</td>
+                                        <td>1.12</td>
+                                        <td>Cocoa Beach</td>
+                                        <td>19.28</td>
+                                        <td>1.25</td>
+                                    </tr>
+                                    <tr>
+                                        <td>KSC LC-39A</td>
+                                        <td>2.34</td>
+                                        <td>Cape Canaveral</td>
+                                        <td>25.12</td>
+                                        <td>4.76</td>
+                                    </tr>
+                                    <tr>
+                                        <td>VAFB SLC-4E</td>
+                                        <td>2.87</td>
+                                        <td>Lompoc</td>
+                                        <td>15.67</td>
+                                        <td>3.92</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Site Characteristics Comparison</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-spider" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="siteCharacteristicsChart"></canvas>
+                        </div>
+                        <div class="radar-legend">
+                            <div class="radar-legend-item">
+                                <div class="radar-color" style="background-color: rgba(76, 175, 80, 0.6);"></div>
+                                <span>KSC LC-39A</span>
+                            </div>
+                            <div class="radar-legend-item">
+                                <div class="radar-color" style="background-color: rgba(255, 193, 7, 0.6);"></div>
+                                <span>CCAFS LC-40</span>
+                            </div>
+                            <div class="radar-legend-item">
+                                <div class="radar-color" style="background-color: rgba(244, 67, 54, 0.6);"></div>
+                                <span>VAFB SLC-4E</span>
+                            </div>
+                        </div>
+                        <div class="info-box">This radar chart compares key metrics for each launch site, including success rates, geographical proximities, and launch volumes.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Coastline Proximity Map</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-water" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="map-container" id="coastlineMap"></div>
+                        <div class="info-box">This map highlights the distances between each launch site and the nearest coastline, a critical factor for launch safety.</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">City & Infrastructure Proximity</h3>
+                            <div class="card-icon">
+                                <i class="fas fa-city" style="color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="map-container" id="infrastructureMap"></div>
+                        <div class="info-box">This map shows the balance between isolation (for safety) and connectivity (for logistics) for each launch site.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Findings Section -->
+        <div id="findings" class="section">
+            <h2>Key Findings</h2>
+
+            <div class="key-finding">
+                <h3>Coastal Positioning Strategy</h3>
+                <p>All SpaceX launch sites are positioned within 3 km of coastlines, enabling over-water flight paths that minimize risks to populated areas. This consistent pattern across all sites highlights the fundamental importance of coastal access in launch site selection.</p>
+                <div>
+                    <span class="tag tag-success">Safety Consideration</span>
+                    <span class="tag tag-warning">Regulatory Compliance</span>
+                </div>
+            </div>
+
+            <div class="key-finding">
+                <h3>Population Buffer Zones</h3>
+                <p>Launch sites maintain a significant safety buffer from population centers (15-25 km), balancing safety requirements with logistical practicality. The site with the largest buffer (KSC LC-39A at 25.12 km) also demonstrates the highest success rate (76.9%).</p>
+                <div>
+                    <span class="tag tag-success">Safety Consideration</span>
+                    <span class="tag tag-success">Success Correlation</span>
+                </div>
+            </div>
+
+            <div class="key-finding">
+                <h3>Strategic Orbital Positioning</h3>
+                <p>The geographical distribution of launch sites shows clear strategic intent: East Coast sites (CCAFS, KSC) leverage Earth's rotation for equatorial and geostationary orbits, while the West Coast site (VAFB) is optimized for polar orbit insertions.</p>
+                <div>
+                    <span class="tag tag-warning">Operational Efficiency</span>
+                    <span class="tag tag-success">Mission Flexibility</span>
+                </div>
+            </div>
+
+            <div class="key-finding">
+                <h3>Transportation Infrastructure Access</h3>
+                <p>All sites maintain proximity to major highways (1-5 km), facilitating logistics for rocket and equipment transport. This proximity is critical for operational efficiency while still maintaining necessary safety buffers.</p>
+                <div>
+                    <span class="tag tag-warning">Logistical Consideration</span>
+                    <span class="tag tag-success">Operational Efficiency</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Conclusions and Implications</h2>
+                    <div class="card-icon">
+                        <i class="fas fa-lightbulb" style="color: white;"></i>
+                    </div>
+                </div>
+                <div class="conclusion-text">
+                    <p>Our comprehensive geospatial analysis of SpaceX launch sites reveals that successful space operations depend on a complex interplay of geographical, safety, and logistical factors beyond mere rocket technology. The consistent patterns observed across all launch sites suggest a deliberate and strategic approach to site selection that balances multiple competing priorities:</p>
+                    
+                    <h3>Safety as a Primary Consideration</h3>
+                    <p>The consistent coastal positioning and population buffers demonstrate that safety considerations are foundational to site selection, likely influencing regulatory approval and operational risk management.</p>
+                    
+                    <h3>Geographical Optimization for Mission Types</h3>
+                    <p>The strategic positioning of sites on different coasts indicates a sophisticated understanding of orbital mechanics, enabling SpaceX to optimize launch efficiency for different mission profiles without compromising safety or operational requirements.</p>
+                    
+                    <h3>Infrastructure Integration</h3>
+                    <p>The careful balance between isolation (for safety) and connectedness (for logistics) reveals how modern space operations depend on both natural geographical advantages and human-made infrastructure networks.</p>
+                    
+                    <h3>Future Implications</h3>
+                    <p>As SpaceX continues to expand its operations and develop new launch vehicles, these geographical insights may inform future site selection and development. The correlation between certain geographical factors and success rates suggests potential optimization strategies for future sites, particularly as launch cadence increases and new vehicles like Starship enter regular service.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>IBM Data Science Professional Certificate: Capstone Project</p>
+            <p class="author">Analysis completed April 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // Define hardcoded data for the SpaceX launch sites
+        const launchSiteData = {
+            sites: [
+                {
+                    name: "CCAFS LC-40",
+                    lat: 28.56230197,
+                    long: -80.57735648,
+                    total: 26,
+                    successful: 7,
+                    successRate: 26.9,
+                    coastlineDistance: 1.05,
+                    nearestCity: "Cocoa Beach",
+                    cityDistance: 19.34,
+                    highwayDistance: 1.29
+                },
+                {
+                    name: "VAFB SLC-4E",
+                    lat: 34.63283416,
+                    long: -120.6107455,
+                    total: 10,
+                    successful: 4,
+                    successRate: 40.0,
+                    coastlineDistance: 2.87,
+                    nearestCity: "Lompoc",
+                    cityDistance: 15.67,
+                    highwayDistance: 3.92
+                },
+                {
+                    name: "KSC LC-39A",
+                    lat: 28.57325457,
+                    long: -80.64689529,
+                    total: 13,
+                    successful: 10,
+                    successRate: 76.9,
+                    coastlineDistance: 2.34,
+                    nearestCity: "Cape Canaveral",
+                    cityDistance: 25.12,
+                    highwayDistance: 4.76
+                },
+                {
+                    name: "CCAFS SLC-40",
+                    lat: 28.56319718,
+                    long: -80.57682003,
+                    total: 7,
+                    successful: 3,
+                    successRate: 42.9,
+                    coastlineDistance: 1.12,
+                    nearestCity: "Cocoa Beach",
+                    cityDistance: 19.28,
+                    highwayDistance: 1.25
+                }
+            ],
+            summary: {
+                totalSites: 4,
+                totalLaunches: 56,
+                successfulLaunches: 24,
+                overallSuccessRate: 42.9
+            },
+            // Estimated coordinates for proximity points
+            proximityPoints: {
+                coastlines: {
+                    "CCAFS LC-40": { lat: 28.5623, long: -80.5674, distance: 1.05 },
+                    "CCAFS SLC-40": { lat: 28.5632, long: -80.5666, distance: 1.12 },
+                    "KSC LC-39A": { lat: 28.5733, long: -80.6235, distance: 2.34 },
+                    "VAFB SLC-4E": { lat: 34.6328, long: -120.6307, distance: 2.87 }
+                },
+                cities: {
+                    "Cocoa Beach": { lat: 28.3200, long: -80.6076 },
+                    "Cape Canaveral": { lat: 28.3922, long: -80.6077 },
+                    "Lompoc": { lat: 34.6391, long: -120.4579 }
+                },
+                highways: {
+                    "CCAFS LC-40": { lat: 28.5546, long: -80.5872, distance: 1.29 },
+                    "CCAFS SLC-40": { lat: 28.5551, long: -80.5868, distance: 1.25 },
+                    "KSC LC-39A": { lat: 28.5275, long: -80.6817, distance: 4.76 },
+                    "VAFB SLC-4E": { lat: 34.6059, long: -120.6250, distance: 3.92 }
+                }
+            }
+        };
+
+        // Tab navigation function
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Find the clicked tab by the section it shows
+            document.querySelectorAll(`.tab`).forEach(tab => {
+                if (tab.getAttribute('onclick').includes(`'${sectionId}'`)) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+
+        // Initialize all maps and charts when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initOverviewMap();
+            initInteractiveMap();
+            initHeatMap();
+            initSuccessFailureMap();
+            initCoastlineMap();
+            initInfrastructureMap();
+            initCharts();
+        });
+
+        // Create the overview map
+        function initOverviewMap() {
+            // Initialize the map centered on Florida
+            const map = L.map('overviewMap').setView([30.0, -85.0], 5);
+            
+            // Add base tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add markers for each launch site
+            launchSiteData.sites.forEach(site => {
+                // Determine color based on success rate
+                let markerColor;
+                if (site.successRate > 70) {
+                    markerColor = '#4CAF50'; // Green for high success
+                } else if (site.successRate > 40) {
+                    markerColor = '#FFC107'; // Yellow for medium success
+                } else {
+                    markerColor = '#F44336'; // Red for low success
+                }
+                
+                // Create circle marker
+                const marker = L.circleMarker([site.lat, site.long], {
+                    radius: 10,
+                    fillColor: markerColor,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                // Add popup with site information
+                marker.bindPopup(`
+                    <strong>${site.name}</strong><br>
+                    Launches: ${site.total}<br>
+                    Successful: ${site.successful}<br>
+                    Success Rate: ${site.successRate.toFixed(1)}%<br>
+                    Lat: ${site.lat.toFixed(4)}, Long: ${site.long.toFixed(4)}
+                `);
+                
+                // Add site label
+                L.marker([site.lat, site.long], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 20]
+                    })
+                }).addTo(map);
+            });
+        }
+
+        // Initialize the interactive map with different modes
+        function initInteractiveMap() {
+            // Create map in global scope to access it in changeMapMode function
+            window.interactiveMap = L.map('interactiveMap').setView([30.0, -85.0], 5);
+            
+            // Add base tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(window.interactiveMap);
+            
+            // Initialize with basic mode
+            changeMapMode('basic');
+        }
+
+        // Change the interactive map mode
+        function changeMapMode(mode) {
+            // Clear existing layers
+            window.interactiveMap.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+                    window.interactiveMap.removeLayer(layer);
+                }
+            });
+            
+            // Set active button
+            document.querySelectorAll('.map-control-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(mode + 'MapBtn').classList.add('active');
+            
+            // Populate map based on selected mode
+            if (mode === 'basic') {
+                // Basic site markers
+                launchSiteData.sites.forEach(site => {
+                    const marker = L.circleMarker([site.lat, site.long], {
+                        radius: 10,
+                        fillColor: '#3388ff',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(window.interactiveMap);
+                    
+                    marker.bindPopup(`
+                        <strong>${site.name}</strong><br>
+                        Launches: ${site.total}<br>
+                        Success Rate: ${site.successRate.toFixed(1)}%
+                    `);
+                    
+                    L.marker([site.lat, site.long], {
+                        icon: L.divIcon({
+                            className: 'site-label',
+                            html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                            iconSize: [100, 20],
+                            iconAnchor: [50, 20]
+                        })
+                    }).addTo(window.interactiveMap);
+                });
+            } 
+            else if (mode === 'success') {
+                // Success rate colored markers
+                launchSiteData.sites.forEach(site => {
+                    let markerColor;
+                    if (site.successRate > 70) {
+                        markerColor = '#4CAF50'; // Green for high success
+                    } else if (site.successRate > 40) {
+                        markerColor = '#FFC107'; // Yellow for medium success
+                    } else {
+                        markerColor = '#F44336'; // Red for low success
+                    }
+                    
+                    const marker = L.circleMarker([site.lat, site.long], {
+                        radius: 10,
+                        fillColor: markerColor,
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(window.interactiveMap);
+                    
+                    marker.bindPopup(`
+                        <strong>${site.name}</strong><br>
+                        Success Rate: ${site.successRate.toFixed(1)}%<br>
+                        Successful: ${site.successful}/${site.total} launches
+                    `);
+                    
+                    L.marker([site.lat, site.long], {
+                        icon: L.divIcon({
+                            className: 'site-label',
+                            html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name} (${site.successRate.toFixed(1)}%)</div>`,
+                            iconSize: [100, 20],
+                            iconAnchor: [50, 20]
+                        })
+                    }).addTo(window.interactiveMap);
+                });
+            } 
+            else if (mode === 'cluster') {
+                // Simulated launches for each site
+                launchSiteData.sites.forEach(site => {
+                    // Create successful launch markers
+                    for (let i = 0; i < site.successful; i++) {
+                        // Add slight random offset to prevent markers from stacking
+                        const latOffset = (Math.random() - 0.5) * 0.05;
+                        const lngOffset = (Math.random() - 0.5) * 0.05;
+                        
+                        const marker = L.circleMarker([site.lat + latOffset, site.long + lngOffset], {
+                            radius: 5,
+                            fillColor: '#4CAF50', // Green for success
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(window.interactiveMap);
+                        
+                        marker.bindPopup(`
+                            <strong>${site.name}</strong><br>
+                            Status: Successful Launch
+                        `);
+                    }
+                    
+                    // Create failed launch markers
+                    const failures = site.total - site.successful;
+                    for (let i = 0; i < failures; i++) {
+                        // Add slight random offset
+                        const latOffset = (Math.random() - 0.5) * 0.05;
+                        const lngOffset = (Math.random() - 0.5) * 0.05;
+                        
+                        const marker = L.circleMarker([site.lat + latOffset, site.long + lngOffset], {
+                            radius: 5,
+                            fillColor: '#F44336', // Red for failure
+                            color: '#fff',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(window.interactiveMap);
+                        
+                        marker.bindPopup(`
+                            <strong>${site.name}</strong><br>
+                            Status: Failed Launch
+                        `);
+                    }
+                    
+                    // Add site labels
+                    L.marker([site.lat, site.long], {
+                        icon: L.divIcon({
+                            className: 'site-label',
+                            html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                            iconSize: [100, 20],
+                            iconAnchor: [50, 20]
+                        })
+                    }).addTo(window.interactiveMap);
+                });
+            }
+        }
+
+        // Initialize the heat map
+        function initHeatMap() {
+            const map = L.map('heatMap').setView([30.0, -85.0], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add scaled circle markers based on launch volume
+            launchSiteData.sites.forEach(site => {
+                // Scale radius by number of launches (min 10, max 30)
+                const radius = 10 + (site.total / 5);
+                
+                L.circleMarker([site.lat, site.long], {
+                    radius: radius,
+                    fillColor: '#ff7800',
+                    color: '#000',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.6
+                }).bindPopup(`
+                    <strong>${site.name}</strong><br>
+                    Total Launches: ${site.total}
+                `).addTo(map);
+                
+                // Add site label
+                L.marker([site.lat, site.long], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name} (${site.total})</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 20]
+                    })
+                }).addTo(map);
+            });
+        }
+
+        // Initialize the success/failure map
+        function initSuccessFailureMap() {
+            const map = L.map('successFailureMap').setView([30.0, -85.0], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // For each site, add two markers - one for successes, one for failures
+            launchSiteData.sites.forEach(site => {
+                // Success marker
+                const successMarker = L.circleMarker([site.lat - 0.05, site.long], {
+                    radius: site.successful / 2 + 5, // Size based on count
+                    fillColor: '#4CAF50',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                successMarker.bindPopup(`
+                    <strong>${site.name}</strong><br>
+                    Successful Launches: ${site.successful}
+                `);
+                
+                // Failure marker
+                const failures = site.total - site.successful;
+                const failureMarker = L.circleMarker([site.lat + 0.05, site.long], {
+                    radius: failures / 2 + 5, // Size based on count
+                    fillColor: '#F44336',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                failureMarker.bindPopup(`
+                    <strong>${site.name}</strong><br>
+                    Failed Launches: ${failures}
+                `);
+                
+                // Add site label
+                L.marker([site.lat, site.long], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 20]
+                    })
+                }).addTo(map);
+            });
+            
+            // Add legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `
+                    <div style="background-color: rgba(27, 38, 59, 0.8); padding: 5px; border-radius: 5px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <div style="background-color: #4CAF50; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px;"></div>
+                            <span style="color: white; font-size: 12px;">Successful Launches</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <div style="background-color: #F44336; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px;"></div>
+                            <span style="color: white; font-size: 12px;">Failed Launches</span>
+                        </div>
+                    </div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        // Initialize the coastline proximity map
+        function initCoastlineMap() {
+            const map = L.map('coastlineMap').setView([30.0, -85.0], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add markers for launch sites and coastlines
+            launchSiteData.sites.forEach(site => {
+                // Launch site marker
+                const marker = L.circleMarker([site.lat, site.long], {
+                    radius: 8,
+                    fillColor: '#3388ff',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(`<strong>${site.name}</strong><br>Launch Site`);
+                
+                // Get coastline data
+                const coastData = launchSiteData.proximityPoints.coastlines[site.name];
+                
+                if (coastData) {
+                    // Add coastline point marker
+                    const coastMarker = L.circleMarker([coastData.lat, coastData.long], {
+                        radius: 6,
+                        fillColor: '#2196F3',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    coastMarker.bindPopup(`
+                        <strong>Nearest Coastline</strong><br>
+                        Distance: ${coastData.distance.toFixed(2)} km
+                    `);
+                    
+                    // Add a line connecting launch site to coastline
+                    const line = L.polyline([
+                        [site.lat, site.long],
+                        [coastData.lat, coastData.long]
+                    ], {
+                        color: '#2196F3',
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                    
+                    // Add distance label
+                    L.marker(
+                        [(site.lat + coastData.lat) / 2, (site.long + coastData.long) / 2],
+                        {
+                            icon: L.divIcon({
+                                className: 'distance-label',
+                                html: `<div style="background-color: rgba(33, 150, 243, 0.8); color: white; padding: 3px 5px; border-radius: 3px; font-size: 11px;">${coastData.distance.toFixed(2)} km</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 10]
+                            })
+                        }
+                    ).addTo(map);
+                }
+                
+                // Add site label
+                L.marker([site.lat, site.long], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 20]
+                    })
+                }).addTo(map);
+            });
+        }
+
+        // Initialize the infrastructure proximity map
+        function initInfrastructureMap() {
+            const map = L.map('infrastructureMap').setView([30.0, -85.0], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add markers for launch sites, cities, and highways
+            launchSiteData.sites.forEach(site => {
+                // Launch site marker
+                const marker = L.circleMarker([site.lat, site.long], {
+                    radius: 8,
+                    fillColor: '#3388ff',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(`<strong>${site.name}</strong><br>Launch Site`);
+                
+                // City connection
+                const cityInfo = launchSiteData.proximityPoints.cities[site.nearestCity];
+                if (cityInfo) {
+                    // Add city marker
+                    const cityMarker = L.circleMarker([cityInfo.lat, cityInfo.long], {
+                        radius: 6,
+                        fillColor: '#9C27B0',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    cityMarker.bindPopup(`
+                        <strong>${site.nearestCity}</strong><br>
+                        Nearest City<br>
+                        Distance: ${site.cityDistance.toFixed(2)} km
+                    `);
+                    
+                    // Add city connection line
+                    L.polyline([
+                        [site.lat, site.long],
+                        [cityInfo.lat, cityInfo.long]
+                    ], {
+                        color: '#9C27B0',
+                        weight: 2,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                    
+                    // Add distance label
+                    L.marker(
+                        [(site.lat + cityInfo.lat) / 2, (site.long + cityInfo.long) / 2],
+                        {
+                            icon: L.divIcon({
+                                className: 'distance-label',
+                                html: `<div style="background-color: rgba(156, 39, 176, 0.8); color: white; padding: 3px 5px; border-radius: 3px; font-size: 11px;">${site.cityDistance.toFixed(2)} km</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 10]
+                            })
+                        }
+                    ).addTo(map);
+                }
+                
+                // Highway connection
+                const highwayInfo = launchSiteData.proximityPoints.highways[site.name];
+                if (highwayInfo) {
+                    // Add highway marker
+                    const highwayMarker = L.circleMarker([highwayInfo.lat, highwayInfo.long], {
+                        radius: 4,
+                        fillColor: '#FF9800',
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    highwayMarker.bindPopup(`
+                        <strong>Nearest Highway</strong><br>
+                        Distance: ${highwayInfo.distance.toFixed(2)} km
+                    `);
+                    
+                    // Add highway connection line
+                    L.polyline([
+                        [site.lat, site.long],
+                        [highwayInfo.lat, highwayInfo.long]
+                    ], {
+                        color: '#FF9800',
+                        weight: 2,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                    
+                    // Add distance label
+                    L.marker(
+                        [(site.lat + highwayInfo.lat) / 2, (site.long + highwayInfo.long) / 2],
+                        {
+                            icon: L.divIcon({
+                                className: 'distance-label',
+                                html: `<div style="background-color: rgba(255, 152, 0, 0.8); color: white; padding: 3px 5px; border-radius: 3px; font-size: 11px;">${highwayInfo.distance.toFixed(2)} km</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 10]
+                            })
+                        }
+                    ).addTo(map);
+                }
+                
+                // Add site label
+                L.marker([site.lat, site.long], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div style="background-color: rgba(27, 38, 59, 0.7); color: white; padding: 3px 5px; border-radius: 3px; font-size: 12px;">${site.name}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 20]
+                    })
+                }).addTo(map);
+            });
+            
+            // Add legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `
+                    <div style="background-color: rgba(27, 38, 59, 0.8); padding: 5px; border-radius: 5px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <div style="background-color: #9C27B0; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px;"></div>
+                            <span style="color: white; font-size: 12px;">City</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <div style="background-color: #FF9800; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px;"></div>
+                            <span style="color: white; font-size: 12px;">Highway</span>
+                        </div>
+                    </div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        // Initialize all charts
+        function initCharts() {
+            // Success Rate Chart
+            const successRateCtx = document.getElementById('successRateChart').getContext('2d');
+            new Chart(successRateCtx, {
+                type: 'bar',
+                data: {
+                    labels: launchSiteData.sites.map(site => site.name),
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: launchSiteData.sites.map(site => site.successRate),
+                        backgroundColor: [
+                            'rgba(76, 175, 80, 0.7)',  // Green
+                            'rgba(255, 193, 7, 0.7)',  // Yellow
+                            'rgba(255, 87, 34, 0.7)',  // Orange
+                            'rgba(33, 150, 243, 0.7)'  // Blue
+                        ],
+                        borderColor: [
+                            'rgba(76, 175, 80, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(255, 87, 34, 1)',
+                            'rgba(33, 150, 243, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)',
+                                color: '#E0E1DD'
+                            },
+                            ticks: {
+                                color: '#E0E1DD'
+                            },
+                            grid: {
+                                color: 'rgba(224, 225, 221, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#E0E1DD'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleColor: '#fff',
+                            bodyColor: '#fff'
+                        }
+                    }
+                }
+            });
+            
+            // Launch Volume Chart
+            const launchVolumeCtx = document.getElementById('launchVolumeChart').getContext('2d');
+            new Chart(launchVolumeCtx, {
+                type: 'bar',
+                data: {
+                    labels: launchSiteData.sites.map(site => site.name),
+                    datasets: [{
+                        label: 'Number of Launches',
+                        data: launchSiteData.sites.map(site => site.total),
+                        backgroundColor: [
+                            'rgba(33, 150, 243, 0.7)',  // Blue
+                            'rgba(156, 39, 176, 0.7)',  // Purple
+                            'rgba(255, 152, 0, 0.7)',   // Orange
+                            'rgba(76, 175, 80, 0.7)'    // Green
+                        ],
+                        borderColor: [
+                            'rgba(33, 150, 243, 1)',
+                            'rgba(156, 39, 176, 1)',
+                            'rgba(255, 152, 0, 1)',
+                            'rgba(76, 175, 80, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Launches',
+                                color: '#E0E1DD'
+                            },
+                            ticks: {
+                                color: '#E0E1DD'
+                            },
+                            grid: {
+                                color: 'rgba(224, 225, 221, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#E0E1DD'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleColor: '#fff',
+                            bodyColor: '#fff'
+                        }
+                    }
+                }
+            });
+            
+            // Site Characteristics Radar Chart
+            const siteCharacteristicsCtx = document.getElementById('siteCharacteristicsChart').getContext('2d');
+            
+            // Only use major sites for the radar chart (to prevent overcrowding)
+            const keySites = ['KSC LC-39A', 'CCAFS LC-40', 'VAFB SLC-4E'];
+            const filteredSites = launchSiteData.sites.filter(site => keySites.includes(site.name));
+            
+            // Normalize metrics for the chart (all on a 0-100 scale)
+            // For distances, inverse is better (shorter distance = higher score)
+            const chartData = {
+                labels: ['Success Rate', 'Launch Volume', 'Coastline Proximity', 'City Buffer', 'Highway Access'],
+                datasets: filteredSites.map((site, index) => {
+                    const colors = [
+                        'rgba(76, 175, 80, 0.6)',  // Green
+                        'rgba(255, 193, 7, 0.6)',  // Yellow
+                        'rgba(244, 67, 54, 0.6)'   // Red
+                    ];
+                    
+                    const borderColors = [
+                        'rgba(76, 175, 80, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(244, 67, 54, 1)'
+                    ];
+                    
+                    // Normalize metrics
+                    const maxLaunches = Math.max(...launchSiteData.sites.map(s => s.total));
+                    const launchVolumeScore = (site.total / maxLaunches) * 100;
+                    
+                    // For distances, invert the scale (shorter = better for coastline and highway, longer = better for city)
+                    const maxCoastline = Math.max(...launchSiteData.sites.map(s => s.coastlineDistance));
+                    const maxCity = Math.max(...launchSiteData.sites.map(s => s.cityDistance));
+                    const maxHighway = Math.max(...launchSiteData.sites.map(s => s.highwayDistance));
+                    
+                    const coastlineScore = 100 - ((site.coastlineDistance / maxCoastline) * 100);
+                    const cityScore = (site.cityDistance / maxCity) * 100; // Higher is better for city distance
+                    const highwayScore = 100 - ((site.highwayDistance / maxHighway) * 100);
+                    
+                    return {
+                        label: site.name,
+                        data: [
+                            site.successRate,         // Success Rate
+                            launchVolumeScore,        // Launch Volume 
+                            coastlineScore,           // Coastline Proximity
+                            cityScore,                // City Buffer
+                            highwayScore              // Highway Access
+                        ],
+                        backgroundColor: colors[index],
+                        borderColor: borderColors[index],
+                        borderWidth: 2,
+                        pointBackgroundColor: borderColors[index],
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: borderColors[index]
+                    };
+                })
+            };
+            
+            new Chart(siteCharacteristicsCtx, {
+                type: 'radar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(224, 225, 221, 0.2)'
+                            },
+                            grid: {
+                                color: 'rgba(224, 225, 221, 0.2)'
+                            },
+                            pointLabels: {
+                                color: '#E0E1DD',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                backdropColor: 'transparent',
+                                color: '#E0E1DD'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#E0E1DD',
+                                font: {
+                                    size: 12
+                                },
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    
+                                    const value = context.raw;
+                                    const index = context.dataIndex;
+                                    const metric = chartData.labels[index];
+                                    const site = filteredSites.find(s => s.name === context.dataset.label);
+                                    
+                                    // Format based on metric
+                                    if (metric === 'Success Rate') {
+                                        label += `${value.toFixed(1)}%`;
+                                    } else if (metric === 'Launch Volume') {
+                                        label += `${site.total} launches`;
+                                    } else if (metric === 'Coastline Proximity') {
+                                        label += `${site.coastlineDistance.toFixed(2)} km`;
+                                    } else if (metric === 'City Buffer') {
+                                        label += `${site.cityDistance.toFixed(2)} km`;
+                                    } else if (metric === 'Highway Access') {
+                                        label += `${site.highwayDistance.toFixed(2)} km`;
+                                    } else {
+                                        label += value.toFixed(1);
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+                            '

@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Falcon 9 Landing Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #005288;
+            --primary-light: #1a75bc;
+            --secondary: #a7a9ac;
+            --accent: #ff5c5c;
+            --success: #4BB543;
+            --background: #f9fafb;
+            --card-bg: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #6b7280;
+            --border-radius: 10px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            z-index: 0;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            margin: 8px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        .tabs {
+            display: flex;
+            margin: 20px 0 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+            margin-right: 10px;
+        }
+
+        .tab.active {
+            color: white;
+            border-bottom: 3px solid white;
+        }
+
+        .tab:hover:not(.active) {
+            color: white;
+            border-bottom: 3px solid rgba(255,255,255,0.4);
+        }
+
+        /* Dashboard layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            transition: var(--transition);
+            height: 100%;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .card-title {
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-title i {
+            margin-right: 8px;
+            color: var(--primary-light);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 15px;
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #f4f7ff 0%, #edf2ff 100%);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            transition: var(--transition);
+            box-shadow: 0 2px 6px rgba(0, 82, 136, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 82, 136, 0.15);
+        }
+
+        .stat-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: rgba(0, 82, 136, 0.1);
+            font-size: 30px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Note */
+        .note {
+            background: linear-gradient(to right, #f4f7ff, #ffffff);
+            border-left: 4px solid var(--primary);
+            padding: 12px 15px;
+            margin-top: 15px;
+            font-size: 14px;
+            border-radius: 0 5px 5px 0;
+            color: var(--text-secondary);
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .table th {
+            background-color: #f4f7ff;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover td {
+            background-color: #f9fafc;
+        }
+
+        /* Success indicators */
+        .success-rate {
+            font-weight: 600;
+        }
+
+        .success-rate.high {
+            color: var(--success);
+        }
+
+        .success-rate.medium {
+            color: #FFA500;
+        }
+
+        .success-rate.low {
+            color: var(--accent);
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .section-title {
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eaeaea;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+                margin-bottom: 5px;
+            }
+
+            .tab {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--card-bg);
+            padding: 15px 20px;
+            text-align: center;
+            margin-top: 30px;
+            border-radius: var(--border-radius);
+            color: var(--text-secondary);
+            font-size: 13px;
+            box-shadow: var(--shadow);
+        }
+
+        /* Badge for success rates */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        .badge.success {
+            background-color: rgba(75, 181, 67, 0.15);
+            color: var(--success);
+        }
+
+        .badge.warning {
+            background-color: rgba(255, 165, 0, 0.15);
+            color: #FFA500;
+        }
+
+        .badge.danger {
+            background-color: rgba(255, 92, 92, 0.15);
+            color: var(--accent);
+        }
+
+        /* Custom styles for specific cards */
+        .rocket-icon {
+            height: 80px;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            opacity: 0.1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>SpaceX Falcon 9 First Stage Landing Prediction</h1>
+                <p>Comprehensive analysis of landing success factors and trends</p>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="window.showSection('overview')"><i class="fas fa-home"></i> Overview</div>
+                    <div class="tab" onclick="window.showSection('launch-sites')"><i class="fas fa-map-marker-alt"></i> Launch Sites</div>
+                    <div class="tab" onclick="window.showSection('orbit-analysis')"><i class="fas fa-globe"></i> Orbit Analysis</div>
+                    <div class="tab" onclick="window.showSection('time-trends')"><i class="fas fa-chart-line"></i> Time Trends</div>
+                    <div class="tab" onclick="window.showSection('feature-engineering')"><i class="fas fa-cogs"></i> Feature Engineering</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <div id="overview" class="section active">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-rocket"></i> Mission Statistics</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <i class="fas fa-shuttle-space stat-icon"></i>
+                            <div class="stat-value">90</div>
+                            <div class="stat-label">Total Launches</div>
+                        </div>
+                        <div class="stat-box">
+                            <i class="fas fa-check-circle stat-icon"></i>
+                            <div class="stat-value">60</div>
+                            <div class="stat-label">Successful Landings</div>
+                        </div>
+                        <div class="stat-box">
+                            <i class="fas fa-percentage stat-icon"></i>
+                            <div class="stat-value">66.7%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <i class="fas fa-map-marker-alt stat-icon"></i>
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Launch Sites</div>
+                        </div>
+                        <div class="stat-box">
+                            <i class="fas fa-globe stat-icon"></i>
+                            <div class="stat-value">11</div>
+                            <div class="stat-label">Orbit Types</div>
+                        </div>
+                        <div class="stat-box">
+                            <i class="fas fa-sync stat-icon"></i>
+                            <div class="stat-value">41.1%</div>
+                            <div class="stat-label">Booster Reuse Rate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-tools"></i> Landing Equipment Impact</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="equipmentChart"></canvas>
+                    </div>
+                    <div class="note">
+                        Both grid fins and legs dramatically increase landing success rates, from below 10% to over 80%.
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-globe-americas"></i> Success Rate by Orbit Type</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="orbitSuccessChart"></canvas>
+                    </div>
+                    <div class="note">
+                        SSO orbit missions have 100% success rate, followed by VLEO (85.7%) and LEO (71.4%). GTO has the lowest success rate at 51.9%. 
+                        VLEO missions carry the heaviest payloads by far (avg: 15,429 kg).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Launch Sites Section -->
+        <div id="launch-sites" class="section">
+            <h2 class="section-title">Launch Site Analysis</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-percentage"></i> Launch Site Success Rates</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="launchSiteSuccessChart"></canvas>
+                    </div>
+                    <div class="note">
+                        KSC LC 39A has the highest success rate (77.3%), followed closely by VAFB SLC 4E (76.9%). CCSFS SLC 40 has the lowest rate (60%).
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-weight"></i> Payload Mass by Launch Site</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="payloadByLaunchSiteChart"></canvas>
+                    </div>
+                    <div class="note">
+                        KSC LC 39A handles the heaviest payloads on average (7,645 kg), while VAFB SLC 4E has a lower maximum capacity (9,600 kg) compared to other sites (15,600 kg).
+                        The data confirms that VAFB-SLC doesn't launch very heavy payloads (>10,000 kg) compared to other sites.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orbit Analysis Section -->
+        <div id="orbit-analysis" class="section">
+            <h2 class="section-title">Orbit Type Analysis</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-satellite"></i> Success Rate by Orbit Type</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="orbitSuccessDetailChart"></canvas>
+                    </div>
+                    <div class="note">
+                        SSO orbit missions have 100% success rate, followed by VLEO (85.7%) and LEO (71.4%). GTO has the lowest success rate at 51.9%.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-weight-hanging"></i> Payload Mass by Orbit Type</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="payloadByOrbitChart"></canvas>
+                    </div>
+                    <div class="note">
+                        VLEO missions carry the heaviest payloads by far (avg: 15,429 kg), followed by Polar Orbit (PO) missions (avg: 7,584 kg).
+                        With heavy payloads the successful landing rate is higher for Polar, LEO and ISS orbits.
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-list-ol"></i> Flight Number vs Orbit Type</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Orbit Type</th>
+                                    <th>Flight Number Range</th>
+                                    <th>Success Rate</th>
+                                    <th>Total Missions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>LEO</td>
+                                    <td>1-44</td>
+                                    <td class="success-rate medium">71.43% <span class="badge warning">Medium</span></td>
+                                    <td>7</td>
+                                </tr>
+                                <tr>
+                                    <td>ISS</td>
+                                    <td>3-79</td>
+                                    <td class="success-rate medium">61.90% <span class="badge warning">Medium</span></td>
+                                    <td>21</td>
+                                </tr>
+                                <tr>
+                                    <td>GTO</td>
+                                    <td>5-71</td>
+                                    <td class="success-rate low">51.85% <span class="badge danger">Low</span></td>
+                                    <td>27</td>
+                                </tr>
+                                <tr>
+                                    <td>PO</td>
+                                    <td>4-62</td>
+                                    <td class="success-rate medium">66.67% <span class="badge warning">Medium</span></td>
+                                    <td>9</td>
+                                </tr>
+                                <tr>
+                                    <td>SSO</td>
+                                    <td>37-85</td>
+                                    <td class="success-rate high">100.00% <span class="badge success">High</span></td>
+                                    <td>5</td>
+                                </tr>
+                                <tr>
+                                    <td>VLEO</td>
+                                    <td>65-89</td>
+                                    <td class="success-rate high">85.71% <span class="badge success">High</span></td>
+                                    <td>14</td>
+                                </tr>
+                                <tr>
+                                    <td>MEO</td>
+                                    <td>61-90</td>
+                                    <td class="success-rate medium">66.67% <span class="badge warning">Medium</span></td>
+                                    <td>3</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="note">
+                        LEO and ISS missions span the longest flight number ranges. VLEO and MEO missions are more recent (higher flight numbers).
+                        You can observe that in the LEO orbit, success seems to be related to the number of flights. Conversely, in the GTO orbit, there appears to be no relationship between flight number and success.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Trends Section -->
+        <div id="time-trends" class="section">
+            <h2 class="section-title">Time Trend Analysis</h2>
+            <div class="dashboard-grid">
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-chart-line"></i> Yearly Landing Success Trend</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="yearlyTrendChart"></canvas>
+                    </div>
+                    <div class="note">
+                        Success rates improved significantly from 2013 onwards, reaching over 80% by 2017 and peaking at 90% in 2019. The data confirms that "the success rate since 2013 kept increasing till 2020".
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Engineering Section -->
+        <div id="feature-engineering" class="section">
+            <h2 class="section-title">Feature Engineering Analysis</h2>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-code"></i> One-Hot Encoding</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Original Column</th>
+                                    <th>Data Type</th>
+                                    <th>Unique Values</th>
+                                    <th>One-Hot Columns Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Orbit</td>
+                                    <td>Categorical</td>
+                                    <td>11</td>
+                                    <td>11 columns (Orbit_ES-L1, Orbit_GEO, etc.)</td>
+                                </tr>
+                                <tr>
+                                    <td>LaunchSite</td>
+                                    <td>Categorical</td>
+                                    <td>3</td>
+                                    <td>3 columns (LaunchSite_CCAFS SLC 40, etc.)</td>
+                                </tr>
+                                <tr>
+                                    <td>LandingPad</td>
+                                    <td>Categorical</td>
+                                    <td>5 + null</td>
+                                    <td>5 columns (LandingPad_5e9e3032383ecb267a34e7c7, etc.)</td>
+                                </tr>
+                                <tr>
+                                    <td>Serial</td>
+                                    <td>Categorical</td>
+                                    <td>53</td>
+                                    <td>53 columns (Serial_B0003, Serial_B0005, etc.)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-exchange-alt"></i> Data Type Conversion</h3>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <ul style="list-style-type: none; padding-left: 5px;">
+                            <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                                <i class="fas fa-check-circle" style="color: var(--success); position: absolute; left: 0; top: 2px;"></i>
+                                Boolean values in GridFins, Reused, and Legs columns were converted from string format ("True"/"False") to numeric values (1/0).
+                            </li>
+                            <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                                <i class="fas fa-check-circle" style="color: var(--success); position: absolute; left: 0; top: 2px;"></i>
+                                All numeric columns (FlightNumber, PayloadMass, etc.) were converted to the same data type (float64) for compatibility with machine learning algorithms.
+                            </li>
+                            <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                                <i class="fas fa-check-circle" style="color: var(--success); position: absolute; left: 0; top: 2px;"></i>
+                                All one-hot encoded columns were created as numeric (float64) type with binary values (0/1).
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">18</div>
+                            <div class="stat-label">Original Columns</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">80</div>
+                            <div class="stat-label">Transformed Columns</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">90</div>
+                            <div class="stat-label">Total Records</div>
+                        </div>
+                    </div>
+                    <div class="note">
+                        <strong>Key Transformation Notes:</strong><br>
+                        - The Class column (target variable) is not included in dataset_part_3.csv as mentioned in the notebook<br>
+                        - All data was successfully converted to consistent float64 type<br>
+                        - String categorical values were properly encoded as binary indicators<br>
+                        - The data is now ready for machine learning model training in the next phase
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>SpaceX Falcon 9 First Stage Landing Prediction Dashboard • Data Analytics Project • 2025</p>
+        </div>
+    </div>
+
+    <script>
+        // Declare showSection in global scope
+        window.showSection = function(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Find the clicked tab by the sectionId it references
+            document.querySelector(`.tab[onclick="window.showSection('${sectionId}')"]`).classList.add('active');
+        };
+
+        // Equipment chart
+        const equipmentData = {
+            labels: ['With Grid Fins', 'Without Grid Fins', 'With Legs', 'Without Legs'],
+            datasets: [{
+                label: 'Success Rate (%)',
+                data: [82.9, 10.0, 83.1, 5.3],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)', 
+                    'rgba(54, 162, 235, 0.3)', 
+                    'rgba(75, 192, 192, 0.7)', 
+                    'rgba(75, 192, 192, 0.3)'
+                ],
+                borderColor: [
+                    'rgb(54, 162, 235)', 
+                    'rgb(54, 162, 235)', 
+                    'rgb(75, 192, 192)', 
+                    'rgb(75, 192, 192)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        // Yearly Trend chart
+        const yearlyTrendData = {
+            labels: ['2010', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020'],
+            datasets: [{
+                label: 'Success Rate (%)',
+                data: [0, 0, 0, 33.3, 33.3, 62.5, 83.3, 61.1, 90.0, 84.2],
+                backgroundColor: 'rgba(0, 82, 136, 0.2)',
+                borderColor: 'rgb(0, 82, 136)',
+                borderWidth: 2,
+                tension: 0.2,
+                fill: true
+            }]
+        };
+        
+        // Launch Site Success chart
+        const launchSiteSuccessData = {
+            labels: ['KSC LC 39A', 'VAFB SLC 4E', 'CCSFS SLC 40'],
+            datasets: [{
+                label: 'Success Rate (%)',
+                data: [77.3, 76.9, 60.0],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)', 
+                    'rgba(75, 192, 192, 0.7)', 
+                    'rgba(255, 159, 64, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(54, 162, 235)', 
+                    'rgb(75, 192, 192)', 
+                    'rgb(255, 159, 64)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        // Payload by Launch Site chart
+        const payloadByLaunchSiteData = {
+            labels: ['CCSFS SLC 40', 'KSC LC 39A', 'VAFB SLC 4E'],
+            datasets: [
+                {
+                    label: 'Average Payload (kg)',
+                    data: [5563, 7645, 5919],
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Maximum Payload (kg)',
+                    data: [15600, 15600, 9600],
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        
+        // Orbit Success chart
+        const orbitSuccessData = {
+            labels: ['SSO', 'VLEO', 'LEO', 'PO', 'MEO', 'ISS', 'GTO'],
+            datasets: [{
+                label: 'Success Rate (%)',
+                data: [100, 85.7, 71.4, 66.7, 66.7, 61.9, 51.9],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)', 
+                    'rgba(75, 192, 192, 0.7)', 
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 205, 86, 0.7)',
+                    'rgba(201, 203, 207, 0.7)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        // Duplicate orbit success chart for detailed view
+        const orbitSuccessDetailData = {
+            labels: ['SSO', 'VLEO', 'LEO', 'PO', 'MEO', 'ISS', 'GTO'],
+            datasets: [{
+                label: 'Success Rate (%)',
+                data: [100, 85.7, 71.4, 66.7, 66.7, 61.9, 51.9],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)', 
+                    'rgba(75, 192, 192, 0.7)', 
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 205, 86, 0.7)',
+                    'rgba(201, 203, 207, 0.7)'
+                ],
+                borderWidth: 1
+            }]
+        };
+        
+        // Payload by Orbit chart
+        const payloadByOrbitData = {
+            labels: ['VLEO', 'PO', 'GTO', 'LEO', 'MEO', 'ISS', 'SSO'],
+            datasets: [
+                {
+                    label: 'Average Payload (kg)',
+                    data: [15429, 7584, 5012, 3891, 3987, 3280, 2060],
+                    backgroundColor: 'rgba(0, 82, 136, 0.7)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        
+        // Initialize charts when the window loads
+        window.onload = function() {
+            // Equipment chart
+            new Chart(document.getElementById('equipmentChart').getContext('2d'), {
+                type: 'bar',
+                data: equipmentData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            titleColor: '#fff',
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyColor: '#fff',
+                            bodyFont: {
+                                size: 13
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Yearly Trend chart
+            new Chart(document.getElementById('yearlyTrendChart').getContext('2d'), {
+                type: 'line',
+                data: yearlyTrendData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+            
+            // Launch Site Success chart
+            new Chart(document.getElementById('launchSiteSuccessChart').getContext('2d'), {
+                type: 'bar',
+                data: launchSiteSuccessData,
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+            
+            // Payload by Launch Site chart
+            new Chart(document.getElementById('payloadByLaunchSiteChart').getContext('2d'), {
+                type: 'bar',
+                data: payloadByLaunchSiteData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Mass (kg)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+            
+            // Orbit Success chart
+            new Chart(document.getElementById('orbitSuccessChart').getContext('2d'), {
+                type: 'bar',
+                data: orbitSuccessData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+            
+            // Orbit Success Detail chart
+            new Chart(document.getElementById('orbitSuccessDetailChart').getContext('2d'), {
+                type: 'bar',
+                data: orbitSuccessDetailData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+            
+            // Payload by Orbit chart
+            new Chart(document.getElementById('payloadByOrbitChart').getContext('2d'), {
+                type: 'bar',
+                data: payloadByOrbitData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Payload Mass (kg)',
+                                color: '#6b7280'
+                            },
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                color: 'rgba(107, 114, 128, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#6b7280'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>

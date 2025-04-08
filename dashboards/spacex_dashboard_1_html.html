@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Falcon 9 Landing Prediction Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.2/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .stat-card {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .dashboard-section {
+            margin-bottom: 2rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">SpaceX Falcon 9 Landing Prediction Dashboard</h1>
+        <p class="text-gray-600">Analysis of landing success factors for Falcon 9 first stage boosters</p>
+    </header>
+    
+    <!-- Executive Summary -->
+    <section class="dashboard-section mb-8">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Executive Summary</h2>
+        <div class="prose max-w-none">
+            <p>SpaceX has revolutionized the aerospace industry by developing reusable rocket technology, significantly reducing launch costs from $165 million to $62 million per mission. This dashboard analyzes 94 Falcon 9 launches to identify key factors influencing first stage landing success.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700">Key Findings</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><span class="font-medium">Technology Evolution:</span> Block 5 boosters achieve a remarkable 94.9% landing success rate compared to only 15.8% for Block 1.</li>
+                        <li><span class="font-medium">Landing Types:</span> RTLS (Return to Launch Site) landings show the highest success rate at 93.3%, compared to 71.4% for drone ship landings.</li>
+                        <li><span class="font-medium">Critical Components:</span> Grid fins and landing legs have been implemented in approximately 75% of missions and are strongly correlated with landing success.</li>
+                        <li><span class="font-medium">Payload Impact:</span> Heavier payloads (primarily to GTO orbits) correlate with lower landing success rates due to fuel constraints.</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700">Business Implications</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><span class="font-medium">Economic Efficiency:</span> Successful booster recovery has enabled SpaceX to achieve 37 reused flights, delivering substantial cost savings.</li>
+                        <li><span class="font-medium">Predictive Capability:</span> The 87% success rate for attempted landings demonstrates the reliability of SpaceX's approach to reusability.</li>
+                        <li><span class="font-medium">Operational Strategy:</span> Launch parameters and mission profiles significantly impact recovery success, informing optimal mission planning.</li>
+                        <li><span class="font-medium">Continuous Improvement:</span> The iterative Block version development shows clear performance gains through engineering refinements.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <p class="mt-4">This analysis demonstrates that SpaceX's landing success is driven primarily by booster version, landing type, and the presence of critical control surfaces. The data reveals a clear trajectory of technological improvement that has transformed experimental recovery attempts into routine operational successes.</p>
+        </div>
+    </section>
+
+    <!-- Key Performance Metrics -->
+    <section class="dashboard-section mb-8">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Key Performance Metrics</h2>
+        <div class="stats-grid">
+            <div class="stat-card bg-blue-50">
+                <div class="text-sm text-gray-500">Total Launches</div>
+                <div class="text-3xl font-bold text-blue-600">94</div>
+            </div>
+            <div class="stat-card bg-green-50">
+                <div class="text-sm text-gray-500">Successful Landings</div>
+                <div class="text-3xl font-bold text-green-600">60</div>
+            </div>
+            <div class="stat-card bg-red-50">
+                <div class="text-sm text-gray-500">Failed Landings</div>
+                <div class="text-3xl font-bold text-red-600">9</div>
+            </div>
+            <div class="stat-card bg-yellow-50">
+                <div class="text-sm text-gray-500">Success Rate</div>
+                <div class="text-3xl font-bold text-yellow-600">87%</div>
+                <div class="text-xs text-gray-500">(of attempted landings)</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Landing Outcome & Block Success -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Landing Outcome Distribution</h2>
+            <div class="chart-container">
+                <canvas id="landingOutcomeChart"></canvas>
+            </div>
+        </section>
+        
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Success Rate by Block Version</h2>
+            <div class="chart-container">
+                <canvas id="blockSuccessChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- Launch Site & Orbit Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Launch Site Distribution</h2>
+            <div class="chart-container">
+                <canvas id="launchSiteChart"></canvas>
+            </div>
+        </section>
+        
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Orbit Type Distribution</h2>
+            <div class="chart-container">
+                <canvas id="orbitDistributionChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- Technology & Landing Type Success -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Technology Adoption</h2>
+            <div class="chart-container">
+                <canvas id="technologyAdoptionChart"></canvas>
+            </div>
+        </section>
+        
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Success Rate by Landing Type</h2>
+            <div class="chart-container">
+                <canvas id="landingTypeSuccessChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- Payload Mass by Orbit -->
+    <section class="dashboard-section mb-8">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Payload Mass by Orbit Type</h2>
+        <div class="chart-container">
+            <canvas id="payloadOrbitChart"></canvas>
+        </div>
+    </section>
+
+    <!-- Block & Landing Type Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Block Version Distribution</h2>
+            <div class="chart-container">
+                <canvas id="blockDistributionChart"></canvas>
+            </div>
+        </section>
+        
+        <section class="dashboard-section">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Landing Type Distribution</h2>
+            <div class="chart-container">
+                <canvas id="landingTypeDistributionChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- Payload Mass Statistics -->
+    <section class="dashboard-section mb-8">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Payload Mass Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-card bg-purple-50">
+                <div class="text-sm text-gray-500">Minimum Payload</div>
+                <div class="text-2xl font-bold text-purple-600">20.00 kg</div>
+            </div>
+            <div class="stat-card bg-purple-50">
+                <div class="text-sm text-gray-500">Maximum Payload</div>
+                <div class="text-2xl font-bold text-purple-600">15600.00 kg</div>
+            </div>
+            <div class="stat-card bg-purple-50">
+                <div class="text-sm text-gray-500">Mean Payload</div>
+                <div class="text-2xl font-bold text-purple-600">5919.17 kg</div>
+            </div>
+            <div class="stat-card bg-purple-50">
+                <div class="text-sm text-gray-500">Median Payload</div>
+                <div class="text-2xl font-bold text-purple-600">4648.00 kg</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Factors Affecting Landing Success -->
+    <section class="dashboard-section mb-8">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">Key Factors Affecting Landing Success</h2>
+        <div class="chart-container">
+            <canvas id="successFactorsChart"></canvas>
+        </div>
+        <div class="mt-4 text-sm text-gray-600">
+            <p>*Based on exploratory data analysis of feature correlation with landing success.</p>
+        </div>
+    </section>
+
+    <footer class="text-center text-gray-500 text-sm mt-8">
+        <p>Data source: SpaceX API | Created with HTML, Tailwind CSS, and Chart.js</p>
+        <p>© 2025 SpaceX Landing Prediction Project</p>
+    </footer>
+
+    <script>
+        // Chart.js configuration
+        Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        Chart.defaults.color = '#4B5563';
+        Chart.defaults.borderColor = '#E5E7EB';
+        
+        // Color palette
+        const COLORS = [
+            '#0088FE', '#00C49F', '#FFBB28', '#FF8042', 
+            '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1'
+        ];
+
+        // Define data
+        const landingSuccessDistribution = [
+            { name: 'Success', value: 60, percentage: 63.8 },
+            { name: 'Failure', value: 9, percentage: 9.6 },
+            { name: 'No Attempt', value: 25, percentage: 26.6 }
+        ];
+        
+        const orbitDistribution = [
+            { name: 'GTO', value: 27 },
+            { name: 'ISS', value: 21 },
+            { name: 'VLEO', value: 14 },
+            { name: 'LEO', value: 11 },
+            { name: 'PO', value: 9 },
+            { name: 'SSO', value: 5 },
+            { name: 'MEO', value: 3 },
+            { name: 'Other', value: 4 }
+        ];
+        
+        const launchSiteDistribution = [
+            { name: 'CCSFS SLC 40', value: 55 },
+            { name: 'KSC LC 39A', value: 22 },
+            { name: 'VAFB SLC 4E', value: 13 },
+            { name: 'Kwajalein Atoll', value: 4 }
+        ];
+        
+        const blockDistribution = [
+            { name: 'Block 1', value: 19 },
+            { name: 'Block 2', value: 6 },
+            { name: 'Block 3', value: 15 },
+            { name: 'Block 4', value: 11 },
+            { name: 'Block 5', value: 39 },
+            { name: 'Unknown', value: 4 }
+        ];
+        
+        const landingTypeDistribution = [
+            { name: 'ASDS', value: 49 },
+            { name: 'None', value: 23 },
+            { name: 'RTLS', value: 15 },
+            { name: 'Ocean', value: 7 }
+        ];
+        
+        const technologyEvolution = [
+            { name: 'Grid Fins', value: 70, total: 94, percentage: 74.5 },
+            { name: 'Legs', value: 71, total: 94, percentage: 75.5 },
+            { name: 'Reused', value: 37, total: 94, percentage: 39.4 }
+        ];
+        
+        const blockSuccessRate = [
+            { name: 'Block 1', success: 3, attempts: 19, rate: 15.8 },
+            { name: 'Block 2', success: 3, attempts: 6, rate: 50.0 },
+            { name: 'Block 3', success: 9, attempts: 15, rate: 60.0 },
+            { name: 'Block 4', success: 8, attempts: 11, rate: 72.7 },
+            { name: 'Block 5', success: 37, attempts: 39, rate: 94.9 }
+        ];
+        
+        const payloadMassByOrbit = [
+            { orbit: 'LEO', avgMass: 2500, launches: 11 },
+            { orbit: 'GTO', avgMass: 5500, launches: 27 },
+            { orbit: 'ISS', avgMass: 2200, launches: 21 },
+            { orbit: 'PO', avgMass: 1800, launches: 9 },
+            { orbit: 'VLEO', avgMass: 1200, launches: 14 },
+            { orbit: 'SSO', avgMass: 1700, launches: 5 },
+            { orbit: 'MEO', avgMass: 4200, launches: 3 },
+            { orbit: 'Other', avgMass: 3100, launches: 4 }
+        ];
+        
+        const successByLandingType = [
+            { name: 'ASDS', success: 35, attempts: 49, rate: 71.4 },
+            { name: 'RTLS', success: 14, attempts: 15, rate: 93.3 },
+            { name: 'Ocean', success: 5, attempts: 7, rate: 71.4 }
+        ];
+        
+        const successFactors = [
+            { factor: 'Block Version', value: 0.85 },
+            { factor: 'Landing Type', value: 0.70 },
+            { factor: 'Grid Fins', value: 0.90 },
+            { factor: 'Payload Mass', value: 0.60 },
+            { factor: 'Orbit Type', value: 0.65 },
+            { factor: 'Launch Site', value: 0.40 }
+        ];
+
+        // Create charts
+        window.onload = function() {
+            // Landing Outcome Distribution (Pie Chart)
+            new Chart(document.getElementById('landingOutcomeChart'), {
+                type: 'pie',
+                data: {
+                    labels: landingSuccessDistribution.map(item => `${item.name}: ${item.percentage}%`),
+                    datasets: [{
+                        data: landingSuccessDistribution.map(item => item.value),
+                        backgroundColor: COLORS.slice(0, 3),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label.split(':')[0]}: ${context.raw} launches`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Success Rate by Block Version (Bar Chart)
+            new Chart(document.getElementById('blockSuccessChart'), {
+                type: 'bar',
+                data: {
+                    labels: blockSuccessRate.map(item => item.name),
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: blockSuccessRate.map(item => item.rate),
+                        backgroundColor: '#82CA9D'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Launch Site Distribution (Horizontal Bar Chart)
+            new Chart(document.getElementById('launchSiteChart'), {
+                type: 'bar',
+                data: {
+                    labels: launchSiteDistribution.map(item => item.name),
+                    datasets: [{
+                        label: 'Number of Launches',
+                        data: launchSiteDistribution.map(item => item.value),
+                        backgroundColor: '#8884D8'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Orbit Type Distribution (Bar Chart)
+            new Chart(document.getElementById('orbitDistributionChart'), {
+                type: 'bar',
+                data: {
+                    labels: orbitDistribution.map(item => item.name),
+                    datasets: [{
+                        label: 'Number of Launches',
+                        data: orbitDistribution.map(item => item.value),
+                        backgroundColor: '#0088FE'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Technology Adoption (Bar Chart)
+            new Chart(document.getElementById('technologyAdoptionChart'), {
+                type: 'bar',
+                data: {
+                    labels: technologyEvolution.map(item => item.name),
+                    datasets: [{
+                        label: 'Percentage (%)',
+                        data: technologyEvolution.map(item => item.percentage),
+                        backgroundColor: '#FF8042'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Success Rate by Landing Type (Bar Chart)
+            new Chart(document.getElementById('landingTypeSuccessChart'), {
+                type: 'bar',
+                data: {
+                    labels: successByLandingType.map(item => item.name),
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: successByLandingType.map(item => item.rate),
+                        backgroundColor: '#00C49F'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Payload Mass by Orbit Type (Bubble Chart)
+            new Chart(document.getElementById('payloadOrbitChart'), {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Payload Mass by Orbit',
+                        data: payloadMassByOrbit.map(item => ({
+                            x: payloadMassByOrbit.map(i => i.orbit).indexOf(item.orbit),
+                            y: item.avgMass,
+                            r: Math.sqrt(item.launches) * 2
+                        })),
+                        backgroundColor: COLORS.map(color => color + '80')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: payloadMassByOrbit.map(item => item.orbit),
+                            title: {
+                                display: true,
+                                text: 'Orbit Type'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Avg. Payload Mass (kg)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const item = payloadMassByOrbit[context.dataIndex];
+                                    return [
+                                        `Orbit: ${item.orbit}`,
+                                        `Avg. Mass: ${item.avgMass} kg`,
+                                        `Launches: ${item.launches}`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Block Version Distribution (Pie Chart)
+            new Chart(document.getElementById('blockDistributionChart'), {
+                type: 'pie',
+                data: {
+                    labels: blockDistribution.map(item => item.name),
+                    datasets: [{
+                        data: blockDistribution.map(item => item.value),
+                        backgroundColor: COLORS,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = blockDistribution.reduce((sum, item) => sum + item.value, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${value} launches (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Landing Type Distribution (Pie Chart)
+            new Chart(document.getElementById('landingTypeDistributionChart'), {
+                type: 'pie',
+                data: {
+                    labels: landingTypeDistribution.map(item => item.name),
+                    datasets: [{
+                        data: landingTypeDistribution.map(item => item.value),
+                        backgroundColor: COLORS,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = landingTypeDistribution.reduce((sum, item) => sum + item.value, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${value} attempts (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Key Factors Affecting Landing Success (Radar Chart)
+            new Chart(document.getElementById('successFactorsChart'), {
+                type: 'radar',
+                data: {
+                    labels: successFactors.map(item => item.factor),
+                    datasets: [{
+                        label: 'Relative Importance',
+                        data: successFactors.map(item => item.value * 100),
+                        backgroundColor: 'rgba(136, 132, 216, 0.2)',
+                        borderColor: 'rgba(136, 132, 216, 1)',
+                        pointBackgroundColor: 'rgba(136, 132, 216, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(136, 132, 216, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}% importance`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
